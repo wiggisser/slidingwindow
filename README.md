@@ -2,8 +2,6 @@
 
 Provides a simple implementation of requestlimits in a sliding time window.
 
-Define a allowed quota per timerange and check every request, wheter it is still allowed in the sliding window. 
-
 ## Installation
 
     go get github.com/wiggisser/slidingwindow
@@ -76,4 +74,3 @@ Define a allowed quota per timerange and check every request, wheter it is still
         }
 
     }
-
