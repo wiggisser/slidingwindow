@@ -2,158 +2,283 @@ package slidingwindow
 
 import (
 	"fmt"
+	"log"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
 
-var testcase int
+var test int
+
+func contains(arr []string, val string) bool {
+	for _, v := range arr {
+		if v == val {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldExecute(tn string) bool {
+	exclude := []string{}
+	execute := []string{}
+
+	if len(exclude) > 0 {
+		return !contains(exclude, tn)
+	}
+
+	if len(execute) > 0 {
+		return contains(execute, tn)
+	}
+
+	return true
+}
+
+func precondition(t int) (bool, error) {
+	var tn string
+	ptr, _, _, ok := runtime.Caller(1)
+	if !ok {
+		return false, fmt.Errorf("Test %d failed to check precondition", t)
+	}
+
+	tn = runtime.FuncForPC(ptr).Name()
+	i := strings.LastIndex(tn, ".")
+	if i >= 0 {
+		tn = tn[i+1:]
+	}
+
+	log.Printf("Test %s (%d)", tn, t)
+
+	if !shouldExecute(tn) {
+		log.Println("skipped")
+		return false, nil
+	}
+
+	return true, nil
+}
 
 func TestLimit(t *testing.T) {
-	testcase = 1
-	test := 1
-	fmt.Printf("Testcase TestLimit (%d)\r\n**********************\r\n", testcase)
+	test = 1
+	testcase := 1
+
+	if b, e := precondition(test); e != nil {
+		log.Println(e)
+		t.FailNow()
+	} else if !b {
+		t.SkipNow()
+	}
 
 	limit, e := NewLimit(10, 10)
 	if e != nil {
-		fmt.Println(e)
-		t.Errorf("should be able to create limit (%d.%d)", testcase, test)
+		t.Errorf("should be able to create limit (%d.%d)", test, testcase)
+	} else {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	}
-	test++
+	testcase++
 
 	if _, e := NewLimit(10, 0); e == nil {
-		t.Errorf("should be not able to create limit with '0' windowsize (%d.%d)", testcase, test)
+		t.Errorf("should be not able to create limit with '0' windowsize (%d.%d)", test, testcase)
+	} else {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	}
-	test++
+	testcase++
 
 	if limit.Check(10) {
-		fmt.Println("allowed")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		fmt.Println("quota exceeded")
-		t.Errorf("Should not have failed (%d.%d)", testcase, test)
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
 	}
-	test++
+	testcase++
 
 	time.Sleep(6 * time.Second)
 
 	if limit.Check(10) {
-		fmt.Println("allowed")
-		t.Errorf("Should not have been allowed (%d.%d)", testcase, test)
+		t.Errorf("should not have been allowed (%d.%d)", test, testcase)
 	} else {
-		fmt.Println("quota exceeded")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	}
-	test++
+	testcase++
 
 	time.Sleep(6 * time.Second)
 
 	if limit.Check(10) {
-		fmt.Println("allowed")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		fmt.Println("quota exceeded")
-		t.Errorf("Should not have failed (%d.%d)", testcase, test)
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
 	}
 }
 
 func TestNamedLimit(t *testing.T) {
 
-	testcase = 2
-	test := 1
+	test = 2
+	testcase := 1
 
-	fmt.Printf("Testcase TestNamedLimit (%d)\r\n***************************\r\n", testcase)
+	if b, e := precondition(test); e != nil {
+		log.Println(e)
+		t.FailNow()
+	} else if !b {
+		t.SkipNow()
+	}
 
 	if e := NewNamedLimit("limit1", 10, 10); e != nil {
-		t.Errorf("should be able to create 'limit1' (%d.%d)", testcase, test)
-		fmt.Println(e)
+		t.Errorf("should be able to create 'limit1' (%d.%d)", test, testcase)
 	} else {
-		fmt.Println("named limit 'limit1' created")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	}
-	test++
+	testcase++
 
 	if e := NewNamedLimit("limit1", 10, 10); e != nil {
-		fmt.Println(e)
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		t.Errorf("should not be able to create 'limit1' (%d.%d)", testcase, test)
-		fmt.Println("named limit 'limit1' created")
+		t.Errorf("should not be able to create 'limit1' (%d.%d)", test, testcase)
 	}
-	test++
+	testcase++
 
 	if b, e := Check("limit1", 10); e != nil {
-		t.Errorf("'limit1' should be available (%d.%d)", testcase, test)
-		fmt.Println(e)
+		t.Errorf("'limit1' should be available (%d.%d)", test, testcase)
 	} else if b {
-		fmt.Println("allowed")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		t.Errorf("should not have failed (%d.%d)", testcase, test)
-		fmt.Println("quota exceeded")
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
 	}
-	test++
+	testcase++
 
-	if b, e := Check("limit2", 10); e != nil {
-		fmt.Println(e)
-	} else if b {
-		t.Errorf("'limit2' should not be available (%d.%d)", testcase, test)
-		fmt.Println("allowed")
+	if _, e := Check("limit2", 10); e != nil {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		t.Errorf("'limit2' should not be available (%d.%d)", testcase, test)
-		fmt.Println("quota exceeded")
+		t.Errorf("'limit2' should not be available (%d.%d)", test, testcase)
 	}
-	test++
+	testcase++
 
 	if b, e := Check("limit1", 10); e != nil {
-		t.Errorf("'limit1' should be available (%d.%d)", testcase, test)
-		fmt.Println(e)
+		t.Errorf("'limit1' should be available (%d.%d)", test, testcase)
 	} else if b {
-		t.Errorf("Should not have been allowed (%d.%d)", testcase, test)
-		fmt.Println("allowed")
+		t.Errorf("should not have been allowed (%d.%d)", test, testcase)
 	} else {
-		fmt.Println("quota exceeded")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	}
-	test++
+	testcase++
 
 	if e := Reset("limit1"); e != nil {
-		t.Errorf("'limit1' should be available (%d.%d)", testcase, test)
-		fmt.Println(e)
+		t.Errorf("'limit1' should be available (%d.%d)", test, testcase)
 	} else {
-		fmt.Println("reset 'limit1' succeeded")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	}
-	test++
+	testcase++
 
 	if b, e := Check("limit1", 10); e != nil {
-		t.Errorf("'limit' should be available (%d.%d)", testcase, test)
-		fmt.Println(e)
+		t.Errorf("'limit' should be available (%d.%d)", test, testcase)
 	} else if b {
-		fmt.Println("allowed")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		t.Errorf("should not have failed (%d.%d)", testcase, test)
-		fmt.Println("quota exceeded")
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
 	}
-	test++
+	testcase++
 
 }
 
 func TestUnlimited(t *testing.T) {
-	testcase = 3
-	test := 1
+	test = 3
+	testcase := 1
 
-	fmt.Printf("Testcase TestUnlimited (%d)\r\n**************************\r\n", testcase)
+	if b, e := precondition(test); e != nil {
+		log.Println(e)
+		t.FailNow()
+	} else if !b {
+		t.SkipNow()
+	}
 
 	limit, e := NewLimit(0, 0)
 	if e != nil {
-		fmt.Println(e)
-		t.Errorf("should be able to create unlimited limit (%d.%d)", testcase, test)
+		log.Println(e)
+	} else {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	}
-	test++
+	testcase++
 
 	if limit.Check(10000) {
-		fmt.Println("allowed")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		t.Errorf("should not have failed (%d.%d)", testcase, test)
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
 	}
-	test++
+	testcase++
 
 	if limit.Check(10000) {
-		fmt.Println("allowed")
+		log.Printf("testcase %d.%d succeeded", test, testcase)
 	} else {
-		t.Errorf("should not have failed (%d.%d)", testcase, test)
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
 	}
 
+}
+
+func TestTiming(t *testing.T) {
+	test = 4
+	testcase := 1
+
+	if b, e := precondition(test); e != nil {
+		log.Println(e)
+		t.FailNow()
+	} else if !b {
+		t.SkipNow()
+	}
+
+	limit, e := NewLimit(10, 10)
+	if e != nil {
+		t.Errorf("should be able to create limit (%d.%d)", test, testcase)
+	} else {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	}
+	testcase++
+
+	if limit.Check(8) {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	} else {
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
+	}
+	testcase++
+
+	if limit.Check(1) {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	} else {
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
+	}
+	testcase++
+
+	if limit.Check(1) {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	} else {
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
+	}
+	testcase++
+
+	if limit.Check(1) {
+		t.Errorf("should not been allowed (%d.%d)", test, testcase)
+	} else {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	}
+	testcase++
+
+	time.Sleep(1 * time.Second)
+	if limit.Check(1) {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	} else {
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
+	}
+	testcase++
+
+	if limit.Check(1) {
+		t.Errorf("should not been allowed (%d.%d)", test, testcase)
+	} else {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	}
+	testcase++
+
+	time.Sleep(3 * time.Second)
+	if limit.Check(3) {
+		log.Printf("testcase %d.%d succeeded", test, testcase)
+	} else {
+		t.Errorf("should not have failed (%d.%d)", test, testcase)
+	}
+	testcase++
 }
