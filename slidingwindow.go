@@ -32,10 +32,12 @@ type limit struct {
 }
 
 func (l *limit) Reset() {
+	//allowance 0 means unlimited access, so no action required
 	if l.allowance <= 0 {
 		return
 	}
 
+	//need to synchronize the check
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	l.lastcheck = time.Now().UTC()
@@ -43,14 +45,10 @@ func (l *limit) Reset() {
 }
 
 func (l *limit) Check(needed int) bool {
-	//allowance of 0 means unlimited access
+	//allowance of 0 means unlimited access, so always approve
 	if l.allowance <= 0 {
 		return true
 	}
-
-	//need to synchronize the check
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
 
 	fneeded := float64(needed)
 
@@ -58,6 +56,10 @@ func (l *limit) Check(needed int) bool {
 	if fneeded > l.allowance {
 		return false
 	}
+
+	//need to synchronize the check
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 
 	now := time.Now().UTC()
 	diff := now.Sub(l.lastcheck)
@@ -82,6 +84,7 @@ var (
 
 //NewLimit creates a new limit with given allowance and windowsize. Use allowance = 0 for unlimited access
 func NewLimit(allowance int, windowsize int) (Limit, error) {
+	//when a limit is set, there must be a valid sliding window
 	if allowance > 0 && windowsize <= 0 {
 		return nil, fmt.Errorf("invalid value '%d' for windowsize", windowsize)
 	}
@@ -93,7 +96,8 @@ func NewLimit(allowance int, windowsize int) (Limit, error) {
 		lastcheck:        time.Now().UTC(),
 	}
 
-	if allowance > 0 && windowsize > 0 {
+	//only need to create a mutex if there is a real limit
+	if allowance > 0 {
 		limit.mutex = &sync.Mutex{}
 	}
 
@@ -102,12 +106,16 @@ func NewLimit(allowance int, windowsize int) (Limit, error) {
 
 //NewNamedLimit create a new named limit with given allowance and windowsize. Use allowance = 0 for unlimited access
 func NewNamedLimit(name string, allowance int, windowsize int) error {
+	//named limits must have a valid name
 	if name == "" {
 		return fmt.Errorf("invalid value '%s' for name", name)
 	}
 
+	//must synchronize the access of the limits map
 	mutex.Lock()
 	defer mutex.Unlock()
+
+	//must not create a new limit with an existing name
 	if _, exists := namedLimits[name]; exists {
 		return fmt.Errorf("named limit '%s' already exists", name)
 	}
@@ -122,9 +130,11 @@ func NewNamedLimit(name string, allowance int, windowsize int) error {
 
 //Reset resets the current allowance of the named limit to full quota
 func Reset(name string) error {
+	//must synchronize the access of the limits map
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	//cannot access a named limit which does not exist
 	l, exists := namedLimits[name]
 	if !exists {
 		return fmt.Errorf("named limit '%s' does not exist", name)
@@ -134,15 +144,13 @@ func Reset(name string) error {
 	return nil
 }
 
-/*
-Check checks whether the needed number of usages is still available in the current window of the named limit
-
-returns
-*/
+//Check checks whether the needed number of usages is still available in the current window of the named limit
 func Check(name string, needed int) (bool, error) {
+	//must synchronize the access of the limits map
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	//cannot access a named limit which does not exist
 	l, exists := namedLimits[name]
 	if !exists {
 		return false, fmt.Errorf("named limit '%s' does not exist", name)
