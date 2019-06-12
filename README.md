@@ -25,7 +25,7 @@ Define a allowed quota per timerange and check every request, wheter it is still
         //allow 10 requests per 10 seconds
         limit := slidingwindow.NewLimit(10, 10)
 
-        if limit.Check(5) {
+        if limit.Check(10) {
             fmt.Println("allowed")
         } else {
             fmt.Println("quota exceeded")
@@ -33,7 +33,7 @@ Define a allowed quota per timerange and check every request, wheter it is still
 
         limit.Reset()
 
-        if limit.Check(5) {
+        if limit.Check(10) {
             fmt.Println("allowed")
         } else {
             fmt.Println("quota exceeded")
@@ -41,7 +41,7 @@ Define a allowed quota per timerange and check every request, wheter it is still
 
         time.Sleep(10 * time.Second)
 
-        if limit.Check(5) {
+        if limit.Check(10) {
             fmt.Println("allowed")
         } else {
             fmt.Println("quota exceeded")
