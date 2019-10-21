@@ -1,4 +1,4 @@
-# Slididing Window
+# Sliding Window
 
 Provides a simple implementation of requestlimits in a sliding time window.
 
